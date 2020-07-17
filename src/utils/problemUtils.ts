@@ -127,6 +127,11 @@ export function parseTestString(test: string): string {
     }
 }
 
+export function processExecuteArg(arg: string): string {
+    if (!isWindows() && /[^a-zA-Z0-9_\-\/]/.test(arg)) arg = `'${arg.replace(/'/g, "\\'")}'`;
+    return arg;
+}
+
 export function randomString(len: number): string {
     len = len || 32;
     const $chars: string = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';

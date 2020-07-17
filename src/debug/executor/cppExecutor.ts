@@ -9,6 +9,7 @@ import {
     getEntryFile,
     getProblemSpecialCode,
     randomString,
+    processExecuteArg,
 } from '../../utils/problemUtils';
 import { IDebugConfig, IProblemType } from '../debugExecutor';
 import problemTypes from '../../problems/problemTypes';
@@ -16,7 +17,6 @@ import { isWindows } from '../../utils/osUtils';
 
 const debugConfig: IDebugConfig = {
     type: 'cppdbg',
-    MIMode: 'gdb',
     setupCommands: [
         {
             description: 'Enable pretty-printing for gdb',
@@ -24,7 +24,6 @@ const debugConfig: IDebugConfig = {
             ignoreFailures: true,
         },
     ],
-    miDebuggerPath: isWindows() ? 'gdb.exe' : 'gdb',
 };
 
 const templateMap: any = {
@@ -236,17 +235,20 @@ using namespace std;
 
         const exePath: string = path.join(
             extensionState.cachePath,
-            `${language}problem${meta.id}.exe`,
+            `${language}problem${meta.id}${isWindows() ? '.exe' : ''}`,
         );
         const thirdPartyPath: string = path.join(extDir, 'src/debug/thirdparty/c');
         const jsonPath: string = path.join(extDir, 'src/debug/thirdparty/c/cJSON.c');
 
+        const compiler: string =
+            vscode.workspace.getConfiguration('debug-leetcode').get('compiler') || 'g++';
         try {
             const includePath: string = path.dirname(exePath);
             await executeCommand(
-                'g++',
+                compiler,
                 [
                     '-g',
+                    '-std=c++11',
                     debugConfig.program,
                     commonDestPath,
                     jsonPath,
@@ -265,19 +267,30 @@ using namespace std;
             return;
         }
 
+        debugConfig.stopAtEntry = true;
+        debugConfig.logging = { engineLogging: true, trace: true, traceResponse: true };
+        debugConfig.MIMode = vscode.workspace.getConfiguration('debug-leetcode').get('MIMode');
+        const miDebuggerPath: string =
+            vscode.workspace.getConfiguration('debug-leetcode').get('miDebuggerPath') || '';
+        if (debugConfig.MIMode != 'lldb' || miDebuggerPath) {
+            debugConfig.miDebuggerPath = miDebuggerPath || (isWindows() ? 'gdb.exe' : 'gdb');
+        }
         debugConfig.program = exePath;
         debugConfig.cwd = extensionState.cachePath;
         // map build source file to user source file
         debugConfig.sourceFileMap = {
             [newSourceFilePath]: filePath,
         };
+        debugConfig.externalConsole = vscode.workspace
+            .getConfiguration('debug-leetcode')
+            .get('externalConsole');
 
         const args: string[] = [
             filePath,
-            testString.replace(/\\"/g, '\\\\"'),
+            processExecuteArg(testString.replace(/\\"/g, '\\\\"')),
             problemType.funName,
-            problemType.paramTypes.join(','),
-            problemType.returnType,
+            processExecuteArg(problemType.paramTypes.join(',')),
+            processExecuteArg(problemType.returnType),
             meta.id,
             port.toString(),
         ];
