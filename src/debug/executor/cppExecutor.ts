@@ -267,7 +267,7 @@ using namespace std;
             return;
         }
 
-        debugConfig.stopAtEntry = true;
+        // debugConfig.stopAtEntry = true;
         // debugConfig.logging = { engineLogging: true, trace: true, traceResponse: true };
         debugConfig.MIMode = vscode.workspace.getConfiguration('debug-leetcode').get('MIMode');
         const miDebuggerPath: string =
